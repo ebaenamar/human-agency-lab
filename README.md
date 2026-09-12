@@ -1,5 +1,7 @@
 # Human Agency Lab — AI Credit Evaluation
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ebaenamar/human-agency-lab)
+
 An interactive workshop simulator for **Human Agency by Design**. Participants design *where and how* a human intervenes in an AI-driven personal-loan workflow, then run a realistic portfolio and observe the trade-offs.
 
 ## What it does
