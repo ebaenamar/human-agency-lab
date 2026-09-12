@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Human Agency Lab — AI Credit Evaluation</title>
+<style>
+  :root{
+    --bg:#fafafa; --panel:#ffffff; --ink:#1a1a1a; --muted:#6b7280;
+    --line:#e7e7e9; --line2:#efeff1; --accent:#4f46e5; --accent-soft:#eef2ff;
+    --green:#0f9d58; --green-soft:#e8f5ec; --red:#d1453b; --red-soft:#fbeceb;
+    --amber:#b7791f; --amber-soft:#fdf6e3; --radius:14px;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+    -webkit-font-smoothing:antialiased; font-size:15px;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:0 24px}
+  header.top{
+    border-bottom:1px solid var(--line); background:rgba(255,255,255,.85);
+    backdrop-filter:saturate(180%) blur(10px); position:sticky; top:0; z-index:50;
+  }
+  .top-inner{display:flex; align-items:center; justify-content:space-between; height:60px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:-.01em}
+  .brand .dot{width:22px;height:22px;border-radius:7px;background:var(--accent);
+    display:inline-flex;align-items:center;justify-content:center}
+  .brand .dot::after{content:"";width:9px;height:9px;border-radius:50%;
+    border:2px solid #fff;border-top-color:transparent;transform:rotate(20deg)}
+  .brand small{color:var(--muted); font-weight:400; margin-left:4px}
+  .steps{display:flex; gap:4px}
+  .steps button{
+    border:none;background:none;color:var(--muted);font:inherit;font-size:13px;
+    padding:6px 11px;border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap
+  }
+  .steps button:hover{background:var(--line2);color:var(--ink)}
+  .steps button.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  main{padding:32px 0 96px}
+  .step{display:none; animation:fade .3s ease}
+  .step.show{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  h1{font-size:26px;letter-spacing:-.02em;margin:0 0 6px}
+  h2{font-size:19px;letter-spacing:-.01em;margin:0 0 4px}
+  .lead{color:var(--muted);max-width:72ch;margin:0 0 24px}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 10px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:22px;margin-bottom:18px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}.steps{display:none}}
+
+  .flow{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding:4px 0}
+  .flow .node{flex:1;min-width:150px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:14px;text-align:center;position:relative}
+  .flow .arrow{display:flex;align-items:center;color:var(--line);padding:0 6px;font-size:20px}
+  .flow .node .ic{font-size:20px}
+  .flow .node .nm{font-weight:600;font-size:14px;margin-top:4px}
+  .flow .node .ds{font-size:12px;color:var(--muted);margin-top:2px}
+
+  .cfg-row{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:center;
+    padding:16px 0;border-bottom:1px solid var(--line2)}
+  .cfg-row:last-child{border-bottom:none}
+  .cfg-row .label{font-weight:600;font-size:14px}
+  .cfg-row .label small{display:block;font-weight:400;color:var(--muted);font-size:12px;margin-top:2px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{border:1px solid var(--line);background:var(--panel);font:inherit;font-size:13px;
+    padding:8px 12px;border-radius:9px;cursor:pointer;color:var(--muted);transition:.15s;flex:1;min-width:118px}
+  .seg button:hover{border-color:#d5d5da}
+  .seg button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .seg button .aut{display:block;font-size:11px;opacity:.7;font-weight:400;margin-top:1px}
+
+  .slider{padding:12px 0;border-bottom:1px solid var(--line2)}
+  .slider:last-child{border-bottom:none}
+  .slider .sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .slider .sl-name{font-weight:600;font-size:14px}
+  .slider .sl-name small{color:var(--muted);font-weight:400;font-size:12px;margin-left:6px}
+  .slider .sl-val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--accent);font-size:14px}
+  input[type=range]{-webkit-appearance:none;width:100%;height:5px;border-radius:99px;
+    background:var(--line);outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
+    border-radius:50%;background:#fff;border:2px solid var(--accent);cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,.15)}
+
+  .btn{border:none;font:inherit;font-weight:600;font-size:14px;padding:11px 20px;border-radius:10px;
+    cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:#4338ca}
+  .btn.ghost{background:var(--panel);border:1px solid var(--line);color:var(--ink)}
+  .btn.ghost:hover{border-color:#c9c9d0}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+
+  .app-card{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel)}
+  .app-card .ah{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .app-card .who{font-weight:600}
+  .app-card .who small{display:block;color:var(--muted);font-weight:400;font-size:12.5px;margin-top:2px}
+  .chip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .chip.low{background:var(--green-soft);color:var(--green)}
+  .chip.med{background:var(--amber-soft);color:var(--amber)}
+  .chip.high{background:var(--red-soft);color:var(--red)}
+  .stat-line{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--muted)}
+  .stat-line b{color:var(--ink);font-variant-numeric:tabular-nums;font-weight:600}
+  .verdict{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-weight:600;font-size:12px;padding:3px 8px;border-radius:7px;margin:2px 0}
+  .tag.route-ai{background:var(--accent-soft);color:var(--accent)}
+  .tag.route-human{background:var(--amber-soft);color:var(--amber)}
+  .tag.ok{background:var(--green-soft);color:var(--green)}
+  .tag.err{background:var(--red-soft);color:var(--red)}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:820px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .kpi .n{font-size:25px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .kpi .sub{font-size:11.5px;color:var(--muted);margin-top:4px}
+
+  .bars{display:flex;flex-direction:column;gap:14px}
+  .bar-row .bt{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+  .bar-row .bt .bn{font-weight:600}
+  .bar-row .bt .bv{color:var(--muted);font-variant-numeric:tabular-nums}
+  .track{height:9px;background:var(--line2);border-radius:99px;overflow:hidden}
+  .fill{height:100%;border-radius:99px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+  .fill.agency{background:linear-gradient(90deg,#6366f1,#4f46e5)}
+  .fill.perf{background:linear-gradient(90deg,#10b981,#0f9d58)}
+
+  .note{background:var(--accent-soft);border:1px solid #dfe3ff;border-radius:12px;padding:14px 16px;
+    font-size:13.5px;color:#3730a3;margin-top:6px}
+  .note.warn{background:var(--amber-soft);border-color:#f3e2b8;color:#8a5a12}
+  .q-list{display:flex;flex-direction:column;gap:12px;margin-top:4px}
+  .q-item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .q-item .qq{font-weight:600;margin-bottom:6px}
+  .q-item .qa{color:var(--muted);font-size:13.5px}
+  .saved{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .saved .row{display:flex;gap:10px;align-items:center;font-size:13px;padding:8px 12px;
+    border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  .saved .row .name{font-weight:600;flex:1}
+  .saved .row .mini{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .foot{color:var(--muted);font-size:12px;text-align:center;padding:24px 0}
+  .divlabel{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);margin:22px 0 10px}
+  table.mini-t{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+  table.mini-t th,table.mini-t td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line2)}
+  table.mini-t th{color:var(--muted);font-weight:600}
+  table.mini-t td{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand"><span class="dot"></span> Human Agency Lab <small>· AI Credit</small></div>
+    <nav class="steps" id="steps">
+      <button data-go="0" class="active">1 · Scenario</button>
+      <button data-go="1">2 · Configure</button>
+      <button data-go="2">3 · Run</button>
+      <button data-go="3">4 · Optimize</button>
+      <button data-go="4">5 · Reflect</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<div class="wrap foot">
+  Fictional, simplified system for educational use · Human Agency by Design
+</div>
+
+<script>
+/* ============================================================
+   HUMAN AGENCY LAB — realistic credit simulation engine
+   Fictional but grounded in real consumer-lending decisioning:
+   FICO-like score, DTI, income stability, segment risk,
+   model miscalibration & bias, data errors, imperfect human
+   review, appeals (adverse-action / ECOA-style), and expected
+   financial outcome (interest margin vs loss-given-default).
+   A seeded RNG makes results reproducible for reflection.
+   ============================================================ */
+
+const state = {
+  step:0,
+  cfg:{ data:"exc", eval:"lowconf", decision:"approve", exec:"confirm", comm:"review" },
+  sl:{ conf:70, risk:50, rcost:35, sev:60, rev:60 },
+  runs:[]
+};
+
+const N = 240;                 // portfolio size
+const SEED = 20260912;         // fixed → reproducible
+
+/* deterministic RNG (mulberry32) + gaussian helper */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gauss(rnd,m,s){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();
+  return m+s*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+/* segment definitions (share, score, dti, model bias, data-error rate) */
+const SEGMENTS=[
+  {key:"prime",     label:"Prime",              share:.42, smu:748,ssd:38, dmu:24,dsd:7,  bias:0.00, derr:.03},
+  {key:"subprime",  label:"Subprime",           share:.20, smu:588,ssd:44, dmu:52,dsd:9,  bias:0.02, derr:.05},
+  {key:"thin",      label:"Thin file",          share:.20, smu:662,ssd:46, dmu:31,dsd:8,  bias:0.07, derr:.06},
+  {key:"irregular", label:"Irregular income",   share:.18, smu:686,ssd:42, dmu:40,dsd:9,  bias:0.10, derr:.05}
+];
+function pickSegment(r){let x=r(),c=0;for(const s of SEGMENTS){c+=s.share;if(x<=c)return s;}return SEGMENTS[0];}
+
+/* build the same portfolio every time */
+function buildPortfolio(){
+  const r=mulberry32(SEED);const list=[];
+  for(let i=0;i<N;i++){
+    const seg=pickSegment(r);
+    const score=Math.round(clamp(gauss(r,seg.smu,seg.ssd),300,850));
+    const dti=Math.round(clamp(gauss(r,seg.dmu,seg.dsd),5,75));
+    const amount=Math.round(clamp(gauss(r,11000,4500),2000,30000)/500)*500;
+    // latent true probability of default from score + dti
+    const riskIdx=(700-score)/100 + (dti-30)/45;
+    const actualPD=clamp(0.03+0.12*riskIdx+gauss(r,0,0.02),0.004,0.92);
+    // data error: a feature is wrong → model sees the applicant as far worse
+    const dataError = r()<seg.derr;
+    // model's estimate: noise + segment bias (penalizes thin/irregular) + data-error shock
+    let aiPD=actualPD+gauss(r,0,0.03)+seg.bias+(dataError?0.34:0);
+    aiPD=clamp(aiPD,0.002,0.99);
+    list.push({i,seg,score,dti,amount,actualPD,aiPD,dataError,r:r()});
+  }
+  return list;
+}
+const PORTFOLIO=buildPortfolio();
+
+/* five illustrative named cases (deterministic, for the narrative) */
+const NAMED=[
+  {id:"ana",name:"Ana Ruiz",tag:"Clearly approvable",segLabel:"Prime",
+   score:768,dti:22,amount:8000,income:"Verified · stable",
+   trueApprove:true,ai:"approve",conf:0.93,dataError:false,incomplete:false,impact:"low",risk:"low",
+   story:"Long history, verified income, low debt. A routine case."},
+  {id:"beto",name:"Beto Salas",tag:"Clearly risky",segLabel:"Subprime",
+   score:562,dti:58,amount:15000,income:"Verified · high burden",
+   trueApprove:false,ai:"reject",conf:0.90,dataError:false,incomplete:false,impact:"med",risk:"high",
+   story:"High debt-to-income and recent late payments."},
+  {id:"carla",name:"Carla Méndez",tag:"Irregular but reliable income",segLabel:"Irregular income",
+   score:690,dti:41,amount:10000,income:"Self-employed · variable",
+   trueApprove:true,ai:"reject",conf:0.58,dataError:false,incomplete:true,impact:"high",risk:"med",
+   story:"Freelancer: the model penalizes variability, yet real cash flow is solid."},
+  {id:"diego",name:"Diego Torres",tag:"Thin credit history",segLabel:"Thin file",
+   score:640,dti:30,amount:6000,income:"Verified · recent",
+   trueApprove:true,ai:"reject",conf:0.55,dataError:false,incomplete:true,impact:"med",risk:"med",
+   story:"Young, thin file. The model hesitates due to missing data."},
+  {id:"elena",name:"Elena Prado",tag:"AI rejects with HIGH confidence — but the data is wrong",segLabel:"Subprime",
+   score:598,dti:47,amount:12000,income:"Verified · contains error",
+   trueApprove:true,ai:"reject",conf:0.94,dataError:true,incomplete:false,impact:"high",risk:"med",
+   story:"A settled debt is shown as active. The model is very confident… and wrong."}
+];
+
+/* deterministic evaluation of a NAMED case under the current config */
+function processNamed(a,cfg,sl){
+  const threshold=sl.conf/100;
+  const isLowConf=a.conf<threshold;
+  const isException=a.incomplete||a.impact==="high";
+  const dataValidated= cfg.data==="all"?true: cfg.data==="exc"?isException:false;
+  const evalHuman= cfg.eval==="human"?true: cfg.eval==="lowconf"?isLowConf:false;
+  const decisionHuman= cfg.decision==="decide"?true: cfg.decision==="approve"?(a.ai==="reject"||a.impact==="high"):false;
+  const contestable= cfg.comm==="human"?true: cfg.comm==="review"?(a.ai==="reject"):false;
+
+  let hs=0;
+  if(dataValidated)hs++; if(evalHuman)hs++; if(decisionHuman)hs++;
+  if(cfg.exec==="human")hs++; else if(cfg.exec==="confirm"&&(decisionHuman||evalHuman))hs+=.5;
+  if(cfg.comm==="human")hs++; else if(cfg.comm==="review"&&a.ai==="reject")hs+=.5;
+  const touched=hs>0;
+
+  const canCatchData=dataValidated||cfg.decision==="decide"||contestable;
+  const canCatchJudg=evalHuman||decisionHuman||dataValidated||contestable;
+  const aiWrong=(a.ai==="approve")!==a.trueApprove;
+  let corrected=false;
+  if(aiWrong)corrected=a.dataError?canCatchData:canCatchJudg;
+  const finalApprove=aiWrong&&corrected?a.trueApprove:(a.ai==="approve");
+  const finalCorrect=finalApprove===a.trueApprove;
+  return {a,touched,hs,aiWrong,corrected,finalApprove,finalCorrect,route:touched?"human":"ai"};
+}
+
+/* ---------- portfolio Monte Carlo under the current design ---------- */
+function simulate(cfg,sl){
+  const boundary = 0.08 + (sl.risk/100)*0.20;   // acceptable PD; risk appetite
+  const MARGIN=0.11, LGD=0.60;                    // interest margin / loss given default
+  const rev=sl.rev/100;                           // reversibility (0..1)
+  let approved=0, autoCount=0, reviewedCount=0;
+  let badApproved=0, goodDenied=0, goodTotal=0;
+  let frrNumProt=0,frrDenProt=0,frrNumMain=0,frrDenMain=0; // fairness: protected vs mainstream
+  let errAvoided=0, errRemaining=0, correct=0;
+  let expRevenue=0, expLoss=0, oppCost=0, reviewCost=0, appealCost=0;
+  let humanMinutes=0, meaningfulReviews=0, oversightTouched=0;
+  let appealsFiled=0, appealsUpheld=0, contestableRejections=0, rejections=0;
+
+  for(const p of PORTFOLIO){
+    const r=mulberry32((p.i+1)*97+Math.round(sl.conf*7+sl.risk*3+sl.rcost));
+    const correctApprove=p.actualPD<boundary;
+    const aiApprove=p.aiPD<boundary;
+    const conf=clamp(0.5+Math.abs(p.aiPD-boundary)*2.6,0.5,0.99);
+    const isLowConf=conf<sl.conf/100;
+    const protectedSeg=(p.seg.key==="thin"||p.seg.key==="irregular");
+    const isException=protectedSeg||p.amount>16000||conf<0.65;
+    const highImpact=p.amount>14000;
+
+    const dataValidated= cfg.data==="all"?true: cfg.data==="exc"?isException:false;
+    const evalHuman= cfg.eval==="human"?true: cfg.eval==="lowconf"?isLowConf:false;
+    const decisionHuman= cfg.decision==="decide"?true: cfg.decision==="approve"?(!aiApprove||highImpact):false;
+    const contestable= cfg.comm==="human"?true: cfg.comm==="review"?(!aiApprove):false;
+
+    let hs=0;
+    if(dataValidated)hs++; if(evalHuman)hs++; if(decisionHuman)hs++;
+    if(cfg.exec==="human")hs++; else if(cfg.exec==="confirm"&&(decisionHuman||evalHuman))hs+=.5;
+    if(cfg.comm==="human")hs++; else if(cfg.comm==="review"&&!aiApprove)hs+=.5;
+    const touched=hs>0;
+    if(touched){reviewedCount++;oversightTouched++;} else autoCount++;
+
+    let decision=aiApprove;
+    const aiWrong=aiApprove!==correctApprove;
+
+    // --- imperfect human corrections ---
+    if(aiWrong){
+      if(p.dataError){
+        if(dataValidated && r()<0.90){decision=correctApprove;}
+        else if((evalHuman||decisionHuman) && r()<0.30){decision=correctApprove;}
+      }else{
+        const pCatch = evalHuman?0.66 : decisionHuman?0.58 : dataValidated?0.35 : 0;
+        if(pCatch>0 && r()<pCatch) decision=correctApprove;
+      }
+    }else{
+      // reviewers occasionally overturn a correct AI decision (human noise)
+      if((evalHuman||decisionHuman) && r()<0.04) decision=!decision;
+    }
+
+    // --- appeals on rejections (adverse-action) ---
+    if(!decision){
+      rejections++;
+      if(contestable)contestableRejections++;
+      if(!decision!==!correctApprove){ /* wrongly rejected */ }
+      if(correctApprove && !decision){ // good applicant denied → may appeal
+        if(contestable && r()<0.70){
+          appealsFiled++;
+          const upheldP=0.55+rev*0.30;              // reversibility helps overturn
+          if(r()<upheldP){decision=true;appealsUpheld++;}
+          appealCost+=sl.rcost*1.4;
+        }
+      }
+    }
+
+    if(aiWrong && decision===correctApprove) errAvoided++;
+    const finalCorrect=(decision===correctApprove);
+    if(!finalCorrect) errRemaining++; else correct++;
+
+    // fairness accounting (false rejection of truly-good applicants)
+    if(correctApprove){goodTotal++; if(!decision){goodDenied++;
+      if(protectedSeg)frrNumProt++; else frrNumMain++; }}
+    if(correctApprove){ if(protectedSeg)frrDenProt++; else frrDenMain++; }
+
+    // financials
+    if(decision){approved++;
+      expRevenue+=(1-p.actualPD)*p.amount*MARGIN;
+      expLoss+=p.actualPD*p.amount*LGD;
+      if(!correctApprove)badApproved++;
+    }else{
+      if(correctApprove)oppCost+=(1-p.actualPD)*p.amount*MARGIN;
+    }
+    reviewCost+=hs*sl.rcost;
+    humanMinutes+=hs*(6+sl.rcost/18);
+    if(dataValidated||evalHuman||(decisionHuman&&highImpact))meaningfulReviews++;
+  }
+
+  const net=Math.round(expRevenue-expLoss-reviewCost-appealCost);
+  const frrProt=frrDenProt?frrNumProt/frrDenProt:0;
+  const frrMain=frrDenMain?frrNumMain/frrDenMain:0;
+  const fairnessGap=Math.round((frrProt-frrMain)*100);
+
+  const oversight=Math.round(oversightTouched/N*100);
+  const contestability=Math.round(rejections?(contestableRejections/rejections)*100*(0.6+rev*0.4):0);
+  const learning=Math.round(meaningfulReviews/N*100);
+  const accuracy=Math.round(correct/N*100);
+  const reviewHours=humanMinutes/60;
+  const speed=Math.round(clamp(100-(humanMinutes/(N*8))*100,3,100));
+  const maxCost=N*3*sl.rcost||1;
+  const costEff=Math.round(clamp(100-(reviewCost+appealCost)/maxCost*100,0,100));
+  const sev=sl.sev/100;
+  const risk=Math.round(clamp((errRemaining/N*100)*(0.5+sev)+ (badApproved/N*100)*sev,0,100));
+
+  return {
+    boundary, approved, approvalRate:Math.round(approved/N*100),
+    autoShare:Math.round(autoCount/N*100), reviewShare:Math.round(reviewedCount/N*100),
+    badApproved, goodDenied, goodTotal, frrProt:Math.round(frrProt*100),
+    frrMain:Math.round(frrMain*100), fairnessGap,
+    errAvoided, errRemaining, correct,
+    expRevenue:Math.round(expRevenue), expLoss:Math.round(expLoss),
+    oppCost:Math.round(oppCost), reviewCost:Math.round(reviewCost),
+    appealCost:Math.round(appealCost), net,
+    reviewHours, appealsFiled, appealsUpheld,
+    agency:{oversight,contestability,learning},
+    perf:{accuracy,speed,costEff}, risk,
+    named:NAMED.map(a=>processNamed(a,cfg,sl))
+  };
+}
+
+/* ============================================================ UI ============================================================ */
+const $=s=>document.querySelector(s);
+const main=$("#main");
+const fmt$=n=>"$"+Math.round(n).toLocaleString();
+
+const OPTIONS={
+  data:[["auto","Automatic","no review"],["exc","Validate exceptions","atypical cases"],["all","Validate all","every application"]],
+  eval:[["ai","AI decides","no human"],["lowconf","Review low confidence","below threshold"],["human","Human + AI","always"]],
+  decision:[["ai","AI decides","automatic"],["approve","Human approves","checks denials"],["decide","Human decides","every decision"]],
+  exec:[["auto","Automatic","no brake"],["confirm","Requires confirmation","one click"],["human","Human executes","manual"]],
+  comm:[["auto","Automatic message","no review"],["review","Human reviews","before sending"],["human","Human communicates","+ appeal"]]
+};
+const CFG_LABELS={
+  data:["Data collection","Are inputs validated before scoring?"],
+  eval:["Evaluation","Who analyzes the risk?"],
+  decision:["Decision","Who holds final authority?"],
+  exec:["Execution","How is the decision applied?"],
+  comm:["Communication","How is it delivered & appealed?"]
+};
+
+function renderScenario(){
+  const flow=["🗂️","Collection","Data & history","📊","Evaluation","Risk & score",
+    "⚖️","Decision","Approve / deny","⚙️","Execution","Apply outcome","✉️","Communication","Inform & appeal"];
+  let nodes="";for(let i=0;i<flow.length;i+=3){nodes+=(i>0?'<div class="arrow">→</div>':'')+
+    `<div class="node"><div class="ic">${flow[i]}</div><div class="nm">${flow[i+1]}</div><div class="ds">${flow[i+2]}</div></div>`;}
+  return `
+  <div class="step ${state.step===0?'show':''}">
+    <p class="eyebrow">Scenario</p>
+    <h1>AI-assisted personal loan evaluation</h1>
+    <p class="lead">A lender uses an AI system to evaluate personal loan applications. The model reviews the
+    information, estimates risk, recommends a decision, and communicates the outcome. Your job is not to build
+    the model — it is to <b>design where and how a human intervenes</b>. Every run scores a realistic portfolio
+    of <b>${N} synthetic applicants</b> plus five illustrative named cases.</p>
+    <div class="panel"><div class="flow">${nodes}</div></div>
+    <div class="grid3">
+      <div class="panel"><h2>The dilemma</h2><p class="lead" style="margin:8px 0 0">
+        Human intervention should not depend on the model's confidence alone. High confidence does not mean the AI is right.</p></div>
+      <div class="panel"><h2>The challenge</h2><p class="lead" style="margin:8px 0 0">
+        Design a fast, accurate flow <b>without</b> removing human judgment, learning, or the applicant's right to question and appeal.</p></div>
+      <div class="panel"><h2>The promise</h2><p class="lead" style="margin:8px 0 0">
+        There is no perfect configuration. Every design produces <b>trade-offs</b> across speed, cost, risk, control, and learning.</p></div>
+    </div>
+    <div class="actions"><button class="btn primary" data-go="1">Design the intervention →</button></div>
+  </div>`;
+}
+
+function renderConfig(){
+  const seg=k=>`<div class="seg" data-cfg="${k}">${OPTIONS[k].map(([v,l,a])=>
+    `<button data-v="${v}" class="${state.cfg[k]===v?'on':''}">${l}<span class="aut">${a}</span></button>`).join("")}</div>`;
+  const row=k=>`<div class="cfg-row"><div class="label">${CFG_LABELS[k][0]}<small>${CFG_LABELS[k][1]}</small></div>${seg(k)}</div>`;
+  const sl=(k,name,hint,min,max)=>`<div class="slider"><div class="sl-top">
+    <div class="sl-name">${name}<small>${hint}</small></div>
+    <div class="sl-val" id="slv-${k}">${FMT[k](state.sl[k])}</div></div>
+    <input type="range" min="${min}" max="${max}" value="${state.sl[k]}" data-slk="${k}"></div>`;
+  return `
+  <div class="step ${state.step===1?'show':''}">
+    <p class="eyebrow">Configure</p>
+    <h1>Design the human intervention</h1>
+    <p class="lead">At each point of the flow, decide how much control the person keeps, and tune the variables
+    that govern routing and cost.</p>
+    <div class="grid2">
+      <div class="panel"><h2>Flow points</h2>
+        <p class="lead" style="margin:6px 0 10px">Where the human enters, and with what authority.</p>
+        ${["data","eval","decision","exec","comm"].map(row).join("")}</div>
+      <div class="panel"><h2>System variables</h2>
+        <p class="lead" style="margin:6px 0 14px">These govern routing and economics.</p>
+        ${sl("conf","Confidence threshold","below it, route to review",50,95)}
+        ${sl("risk","Risk tolerance","lender's appetite",0,100)}
+        ${sl("rcost","Human review cost","per reviewed stage",10,120)}
+        ${sl("sev","Error severity","cost of being wrong",0,100)}
+        ${sl("rev","Reversibility","can it be undone?",0,100)}</div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" data-go="2">Run the portfolio →</button>
+      <button class="btn ghost" data-preset="auto">Preset: max automation</button>
+      <button class="btn ghost" data-preset="human">Preset: max oversight</button>
+      <button class="btn ghost" data-preset="smart">Preset: selective intervention</button>
+    </div>
+  </div>`;
+}
+
+function chip(l){const m={low:["low","Low"],med:["med","Medium"],high:["high","High"]};
+  return `<span class="chip ${m[l][0]}">${m[l][1]} risk</span>`;}
+
+function namedCard(r){
+  const a=r.a;
+  const route=r.route==="human"?`<span class="tag route-human">👤 Sent to human review</span>`
+    :`<span class="tag route-ai">🤖 Automated</span>`;
+  const out=r.finalCorrect?`<span class="tag ok">✓ ${r.finalApprove?'Approved':'Denied'} · correct</span>`
+    :`<span class="tag err">✕ ${r.finalApprove?'Approved':'Denied'} · error</span>`;
+  const flag=r.aiWrong?(r.corrected?`<span class="tag ok">Model error corrected</span>`
+    :`<span class="tag err">Model error NOT caught</span>`):"";
+  return `<div class="app-card"><div class="ah"><div class="who">${a.name}<small>${a.tag}</small></div>${chip(a.risk)}</div>
+    <div style="margin:10px 0 6px">
+      <div class="stat-line"><span>Segment</span><b>${a.segLabel}</b></div>
+      <div class="stat-line"><span>Score</span><b>${a.score}</b></div>
+      <div class="stat-line"><span>DTI (debt-to-income)</span><b>${a.dti}%</b></div>
+      <div class="stat-line"><span>Income</span><b>${a.income}</b></div>
+      <div class="stat-line"><span>Requested</span><b>${fmt$(a.amount)}</b></div>
+      <div class="stat-line"><span>AI recommends</span><b>${a.ai==="approve"?"Approve":"Deny"} · ${Math.round(a.conf*100)}% conf.</b></div>
+    </div>
+    <div class="verdict">${route} ${out} ${flag}
+      <div style="color:var(--muted);margin-top:6px">${a.story}</div></div></div>`;
+}
+
+function bar(cls,name,val,suffix=""){return `<div class="bar-row"><div class="bt">
+  <span class="bn">${name}</span><span class="bv">${val}${suffix}</span></div>
+  <div class="track"><div class="fill ${cls}" style="width:${clamp(val,0,100)}%"></div></div></div>`;}
+
+function renderRun(){
+  const s=simulate(state.cfg,state.sl);
+  const cards=s.named.map(namedCard).join("");
+  const missWarn=s.errRemaining>0
+    ?`<div class="note warn">⚠ ${s.errRemaining} of ${N} applicants ended with the wrong outcome, and
+      ${s.badApproved} bad loans were approved. See Elena among the named cases: 94% confidence and still
+      wrong — confidence-based routing never catches her; only data validation or an appeal does.</div>`
+    :`<div class="note">✓ No wrong final outcomes remained in the portfolio with this design.</div>`;
+  return `
+  <div class="step ${state.step===2?'show':''}">
+    <p class="eyebrow">Run</p>
+    <h1>Portfolio results · ${N} applicants</h1>
+    <p class="lead">The system processed every application under your design. Numbers are expected values from a
+    seeded simulation, so the same design always yields the same result — good for comparison and reflection.</p>
+
+    <div class="kpis" style="margin-bottom:18px">
+      <div class="kpi"><div class="n">${s.approvalRate}%</div><div class="l">Approval rate</div>
+        <div class="sub">${s.autoShare}% automated · ${s.reviewShare}% reviewed</div></div>
+      <div class="kpi"><div class="n" style="color:var(--green)">${s.errAvoided}</div><div class="l">Errors avoided</div>
+        <div class="sub">useful human corrections</div></div>
+      <div class="kpi"><div class="n" style="color:var(--red)">${s.errRemaining}</div><div class="l">Errors remaining</div>
+        <div class="sub">${s.badApproved} bad loans approved</div></div>
+      <div class="kpi"><div class="n">${s.net>=0?'+':''}${fmt$(s.net)}</div><div class="l">Net expected outcome</div>
+        <div class="sub">revenue − loss − review</div></div>
+    </div>
+    ${missWarn}
+
+    <div class="divlabel">Financial & fairness breakdown</div>
+    <div class="grid2">
+      <div class="panel"><h2>Economics</h2>
+        <table class="mini-t">
+          <tr><th>Expected interest revenue</th><td>${fmt$(s.expRevenue)}</td></tr>
+          <tr><th>Expected default losses</th><td>−${fmt$(s.expLoss)}</td></tr>
+          <tr><th>Human review cost</th><td>−${fmt$(s.reviewCost)}</td></tr>
+          <tr><th>Appeals cost</th><td>−${fmt$(s.appealCost)}</td></tr>
+          <tr><th>Opportunity cost (good denials)</th><td>${fmt$(s.oppCost)}</td></tr>
+          <tr><th><b>Net expected outcome</b></th><td><b>${s.net>=0?'+':''}${fmt$(s.net)}</b></td></tr>
+          <tr><th>Human review workload</th><td>${s.reviewHours.toFixed(1)} h</td></tr>
+        </table></div>
+      <div class="panel"><h2>Fairness & appeals</h2>
+        <table class="mini-t">
+          <tr><th>Good applicants wrongly denied</th><td>${s.goodDenied} of ${s.goodTotal}</td></tr>
+          <tr><th>False-rejection rate · thin file + irregular</th><td>${s.frrProt}%</td></tr>
+          <tr><th>False-rejection rate · prime + subprime</th><td>${s.frrMain}%</td></tr>
+          <tr><th>Fairness gap</th><td style="color:${s.fairnessGap>8?'var(--red)':'var(--ink)'}">${s.fairnessGap} pts</td></tr>
+          <tr><th>Appeals filed</th><td>${s.appealsFiled}</td></tr>
+          <tr><th>Appeals upheld</th><td>${s.appealsUpheld}</td></tr>
+        </table>
+        <div class="note ${s.fairnessGap>8?'warn':''}" style="margin-top:12px">
+          A positive fairness gap means the model rejects creditworthy thin-file / irregular-income applicants
+          more often — exactly where targeted human review matters most.</div></div>
+    </div>
+
+    <div class="divlabel">Human Agency Score</div>
+    <div class="grid2">
+      <div class="panel"><h2>Human agency</h2>
+        <p class="lead" style="margin:6px 0 14px">How much judgment, control, and learning the design preserves.</p>
+        <div class="bars">${bar("agency","Oversight",s.agency.oversight)}
+          ${bar("agency","Contestability / applicant control",s.agency.contestability)}
+          ${bar("agency","Human learning preserved",s.agency.learning)}</div></div>
+      <div class="panel"><h2>Performance</h2>
+        <p class="lead" style="margin:6px 0 14px">How fast, accurate, and economical the system is.</p>
+        <div class="bars">${bar("perf","Decision accuracy",s.perf.accuracy)}
+          ${bar("perf","Speed",s.perf.speed)}
+          ${bar("perf","Cost efficiency",s.perf.costEff)}</div>
+        <div class="note ${s.risk>25?'warn':''}" style="margin-top:14px">
+          Residual risk, weighted by severity: <b>${s.risk}/100</b></div></div>
+    </div>
+
+    <div class="divlabel">Illustrative named cases</div>
+    <div class="grid3">${cards}</div>
+    <div class="actions"><button class="btn primary" data-save>Save &amp; compare in Optimize →</button>
+      <button class="btn ghost" data-go="1">← Adjust configuration</button></div>
+  </div>`;
+}
+
+function renderOptimize(){
+  const s=simulate(state.cfg,state.sl);
+  const rows=state.runs.length?state.runs.map(r=>`<div class="row"><span class="name">${r.label}</span>
+    <span class="mini">Acc ${r.perf.accuracy}% · Errors ${r.errRemaining} · Net ${r.net>=0?'+':''}${fmt$(r.net)}<br>
+    Control ${r.agency.contestability}% · Learning ${r.agency.learning}% · Fairness gap ${r.fairnessGap}pts · ${r.reviewHours.toFixed(1)}h</span></div>`).join("")
+    :`<div class="lead">No saved designs yet. Go back to “Run” and press <b>Save &amp; compare</b> to log variants here.</div>`;
+  return `
+  <div class="step ${state.step===3?'show':''}">
+    <p class="eyebrow">Optimize</p>
+    <h1>Redesign &amp; compare</h1>
+    <p class="lead">Adjust your decisions to <b>maximize quality and efficiency without needlessly removing human
+    judgment, learning, and control.</b> Save each variant and compare — no design wins on every dimension.</p>
+    <div class="panel"><h2>Current design</h2>
+      <div class="kpis" style="margin-top:12px">
+        <div class="kpi"><div class="n">${s.perf.accuracy}%</div><div class="l">Accuracy</div></div>
+        <div class="kpi"><div class="n">${s.errRemaining}</div><div class="l">Errors remaining</div></div>
+        <div class="kpi"><div class="n">${s.agency.contestability}%</div><div class="l">Applicant control</div></div>
+        <div class="kpi"><div class="n">${s.net>=0?'+':''}${fmt$(s.net)}</div><div class="l">Net · ${s.reviewHours.toFixed(1)}h</div></div>
+      </div>
+      <div class="actions"><button class="btn primary" data-go="1">← Edit configuration</button>
+        <button class="btn ghost" data-save2>Save this variant</button></div></div>
+    <div class="divlabel">Saved variants</div>
+    <div class="panel"><div class="saved">${rows}</div></div>
+    <div class="note">Workshop rule: if a variant improves speed and cost, it usually pays with risk, fairness,
+    control, or learning. Aim for <b>balance</b>, not the maximum of a single metric.</div>
+    <div class="actions"><button class="btn primary" data-go="4">Go to reflection →</button></div>
+  </div>`;
+}
+
+function renderReflect(){
+  const s=simulate(state.cfg,state.sl);
+  const Q=[
+    ["Where did you place human intervention?","Review your five flow points: collection, evaluation, decision, execution, and communication."],
+    ["What signal triggers it?",`In your design, review is triggered by: confidence threshold (${state.sl.conf}%), exceptions, denials, or appeals.`],
+    ["What authority does the person hold?","Do they only approve, review, or decide? Can they overturn the AI, or merely confirm it?"],
+    ["What information do they receive?","Do they see score, DTI, model confidence and reasons — or only the final recommendation?"],
+    ["What changed in performance?",`This variant: accuracy ${s.perf.accuracy}%, ${s.errRemaining} errors remaining, net ${s.net>=0?'+':''}${fmt$(s.net)}, fairness gap ${s.fairnessGap} pts, control ${s.agency.contestability}%.`],
+    ["Which human capability are you preserving?",`Human learning preserved: ${s.agency.learning}%. Does the system keep people competent and in judgment, or atrophy them?`]
+  ];
+  const hai=Math.round((s.agency.oversight+s.agency.contestability+s.agency.learning)/3);
+  const perf=Math.round((s.perf.accuracy+s.perf.speed+s.perf.costEff)/3);
+  return `
+  <div class="step ${state.step===4?'show':''}">
+    <p class="eyebrow">Reflect</p>
+    <h1>What did you design, and why?</h1>
+    <p class="lead">There is no single right answer. The value is in understanding the trade-offs of your own design.</p>
+    <div class="grid3" style="margin-bottom:20px">
+      <div class="kpi"><div class="n" style="color:var(--accent)">${hai}</div><div class="l">Human Agency Score</div>
+        <div class="sub">avg of 3 dimensions</div></div>
+      <div class="kpi"><div class="n">${perf}</div><div class="l">Performance</div>
+        <div class="sub">accuracy · speed · cost</div></div>
+      <div class="kpi"><div class="n" style="color:${s.risk>25?'var(--red)':'var(--green)'}">${s.risk}</div>
+        <div class="l">Residual risk</div><div class="sub">severity-weighted</div></div>
+    </div>
+    <div class="note">Several dimensions are shown on purpose: collapsing everything into one number would hide the
+    very trade-offs this exercise is meant to reveal.</div>
+    <div class="divlabel">Guiding questions</div>
+    <div class="q-list">${Q.map(([q,a])=>`<div class="q-item"><div class="qq">${q}</div><div class="qa">${a}</div></div>`).join("")}</div>
+    <div class="actions"><button class="btn primary" data-go="0">↺ Start over</button>
+      <button class="btn ghost" data-go="3">← Back to optimize</button></div>
+  </div>`;
+}
+
+/* ---------- main render + events ---------- */
+const FMT={conf:v=>v+"%",risk:v=>v<34?"Low":v<67?"Medium":"High",rcost:v=>"$"+v,
+  sev:v=>v<34?"Low":v<67?"Medium":"High",rev:v=>v<34?"Low":v<67?"Medium":"High"};
+const PRESETS={
+  auto:{data:"auto",eval:"ai",decision:"ai",exec:"auto",comm:"auto"},
+  human:{data:"all",eval:"human",decision:"decide",exec:"human",comm:"human"},
+  smart:{data:"exc",eval:"lowconf",decision:"approve",exec:"confirm",comm:"review"}
+};
+function render(){
+  main.innerHTML=renderScenario()+renderConfig()+renderRun()+renderOptimize()+renderReflect();
+  document.querySelectorAll("#steps button").forEach((b,i)=>b.classList.toggle("active",i===state.step));
+}
+function go(n){state.step=+n;render();window.scrollTo({top:0,behavior:"smooth"});}
+function saveRun(){const s=simulate(state.cfg,state.sl);
+  state.runs.push({label:"Variant "+(state.runs.length+1),perf:s.perf,agency:s.agency,
+    errRemaining:s.errRemaining,net:s.net,fairnessGap:s.fairnessGap,reviewHours:s.reviewHours});}
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-go],[data-cfg] button,[data-preset],[data-save],[data-save2]");
+  if(!t)return;
+  if(t.hasAttribute("data-go"))return go(t.getAttribute("data-go"));
+  if(t.hasAttribute("data-preset")){Object.assign(state.cfg,PRESETS[t.getAttribute("data-preset")]);go(1);return;}
+  if(t.hasAttribute("data-save")){saveRun();go(3);return;}
+  if(t.hasAttribute("data-save2")){saveRun();render();return;}
+  const seg=t.closest("[data-cfg]");
+  if(seg){state.cfg[seg.getAttribute("data-cfg")]=t.getAttribute("data-v");render();}
+});
+document.addEventListener("input",e=>{
+  const r=e.target.closest("input[data-slk]");if(!r)return;
+  const k=r.getAttribute("data-slk");state.sl[k]=+r.value;
+  const o=document.getElementById("slv-"+k);if(o)o.textContent=FMT[k](+r.value);
+});
+render();
+</script>
+</body>
+</html>
